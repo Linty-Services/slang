@@ -349,14 +349,14 @@ const Type& EnumType::fromSyntax(Compilation& comp, const EnumTypeSyntax& syntax
 
     // Enum values must be unique; this set and lambda are used to check that.
     SmallMap<SVInt, SourceLocation, 8> usedValues;
-    auto checkValue = [&usedValues, &context](const ConstantValue& cv, SourceLocation loc) {
+    auto checkValue = [&usedValues, &context](const ConstantValue& cv, SourceRange range) {
         if (!cv)
             return;
 
         auto& value = cv.integer();
-        auto pair = usedValues.emplace(value, loc);
+        auto pair = usedValues.emplace(value, range.start());
         if (!pair.second) {
-            auto& diag = context.addDiag(diag::EnumValueDuplicate, loc) << value;
+            auto& diag = context.addDiag(diag::EnumValueDuplicate, range) << value;
             diag.addNote(diag::NotePreviousDefinition, pair.first->second);
         }
     };
@@ -427,7 +427,7 @@ const Type& EnumType::fromSyntax(Compilation& comp, const EnumTypeSyntax& syntax
         }
 
         previous = ev.getValue();
-        checkValue(previous, previousRange.start());
+        checkValue(previous, previousRange);
     };
 
     // For enumerands that have no initializer, infer the value via this function.
@@ -459,7 +459,7 @@ const Type& EnumType::fromSyntax(Compilation& comp, const EnumTypeSyntax& syntax
             value = prev + one;
         }
 
-        checkValue(value, loc);
+        checkValue(value, range);
 
         ev.setValue(value);
         previous = std::move(value);
@@ -614,7 +614,7 @@ const ConstantValue& EnumValueSymbol::getValue(SourceRange referencingRange) con
             if (evaluating) {
                 SLANG_ASSERT(referencingRange.start());
 
-                auto& diag = ctx.addDiag(diag::ConstEvalParamCycle, location) << name;
+                auto& diag = ctx.addDiag(diag::ConstEvalParamCycle, *this) << name;
                 diag.addNote(diag::NoteReferencedHere, referencingRange) << referencingRange;
                 return ConstantValue::Invalid;
             }
@@ -849,7 +849,7 @@ const Type& PackedStructType::fromSyntax(Compilation& comp, const StructUnionTyp
         if (!issuedError && !type.isIntegral()) {
             issuedError = true;
             auto& diag = context.addDiag(diag::PackedMemberNotIntegral,
-                                         member->type->getFirstToken().location());
+                                         member->type->getFirstToken().range());
             diag << type;
             diag << member->type->sourceRange();
         }
@@ -1144,11 +1144,11 @@ const Type& UnpackedUnionType::fromSyntax(const ASTContext& context,
         auto& varType = field->getType();
         if (!varType.isValidForUnion(isTagged, &errorType)) {
             if (errorType->isVirtualInterface()) {
-                context.addDiag(diag::VirtualInterfaceUnionMember, field->location);
+                context.addDiag(diag::VirtualInterfaceUnionMember, *field);
             }
             else {
                 SLANG_ASSERT(!isTagged);
-                context.addDiag(diag::InvalidUnionMember, field->location) << varType;
+                context.addDiag(diag::InvalidUnionMember, *field) << varType;
             }
         }
 
@@ -1281,14 +1281,14 @@ void ForwardingTypedefSymbol::addForwardDecl(const ForwardingTypedefSymbol& decl
 void ForwardingTypedefSymbol::checkType(ForwardTypeRestriction checkRestriction,
                                         Visibility checkVisibility, SourceLocation declLoc) const {
     if (typeRestriction != ForwardTypeRestriction::None && typeRestriction != checkRestriction) {
-        auto& diag = getParentScope()->addDiag(diag::ForwardTypedefDoesNotMatch, location);
+        auto& diag = getParentScope()->addDiag(diag::ForwardTypedefDoesNotMatch, *this);
         diag << SemanticFacts::getTypeRestrictionText(typeRestriction);
         diag.addNote(diag::NoteDeclarationHere, declLoc);
         return;
     }
 
     if (visibility && visibility != checkVisibility) {
-        auto& diag = getParentScope()->addDiag(diag::ForwardTypedefVisibility, location);
+        auto& diag = getParentScope()->addDiag(diag::ForwardTypedefVisibility, *this);
         diag.addNote(diag::NoteDeclarationHere, declLoc);
         return;
     }

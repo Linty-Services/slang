@@ -369,7 +369,7 @@ struct DiagnosticVisitor : public ASTVisitor<DiagnosticVisitor, false, false> {
         activeInstanceBodies.emplace(&symbol.body);
         if (activeInstanceBodies.size() > compilation.getOptions().maxInstanceDepth) {
             auto& diag = symbol.getParentScope()->addDiag(diag::MaxInstanceDepthExceeded,
-                                                          symbol.location);
+                                                          symbol);
             diag << symbol.getDefinition().getKindString();
             diag << compilation.getOptions().maxInstanceDepth;
             hierarchyProblem = true;

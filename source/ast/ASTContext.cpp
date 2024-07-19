@@ -130,6 +130,13 @@ Diagnostic& ASTContext::addDiag(DiagCode code, SourceRange sourceRange) const {
     return addDiagImpl(code, sourceRange);
 }
 
+Diagnostic& ASTContext::addDiag(DiagCode code, const Symbol& symbol) const {
+    auto& diag = scope->addDiag(code, symbol);
+    if (assertionInstance)
+        addAssertionBacktrace(diag);
+    return diag;
+}
+
 bool ASTContext::requireIntegral(const Expression& expr) const {
     if (expr.bad())
         return false;

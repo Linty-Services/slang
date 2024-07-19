@@ -43,6 +43,13 @@ Diagnostic& AnalysisContext::addDiag(const Symbol& symbol, DiagCode code, Source
     return diagnostics.add(symbol, code, sourceRange);
 }
 
+Diagnostic& AnalysisContext::addDiag(const Symbol& symbol, DiagCode code, const Symbol& symbol2) {
+    if (auto syntax = symbol2.getSyntax())
+        return addDiag(symbol, code, syntax->sourceRange());
+    else
+        return addDiag(symbol, code, symbol2.location);
+}
+
 AnalysisManager::AnalysisManager(AnalysisOptions options) :
 #if defined(SLANG_USE_THREADS)
     options(options), threadPool(options.numThreads) {
@@ -104,7 +111,7 @@ AnalyzedDesign AnalysisManager::analyze(const Compilation& compilation) {
     if (hasFlag(AnalysisFlags::CheckUnused)) {
         for (auto def : compilation.getUnreferencedDefinitions()) {
             if (!def->name.empty() && def->name != "_"sv && !hasUnusedAttrib(compilation, *def)) {
-                state.context.addDiag(*def, diag::UnusedDefinition, def->location)
+                state.context.addDiag(*def, diag::UnusedDefinition, *def)
                     << def->getKindString();
             }
         }

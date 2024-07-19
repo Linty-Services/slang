@@ -277,7 +277,7 @@ struct AnalysisScopeVisitor {
         auto [used, _] = isReferenced(*syntax);
         if (!used) {
             if (shouldWarn(symbol))
-                context.addDiag(symbol, diag::UnusedWildcardImport, symbol.location);
+                context.addDiag(symbol, diag::UnusedWildcardImport, symbol);
         }
     }
 
@@ -410,7 +410,7 @@ private:
 
         auto [used, _] = isReferenced(*syntax);
         if (!used && shouldWarn(symbol)) {
-            context.addDiag(symbol, diag::UnusedAssertionDecl, symbol.location)
+            context.addDiag(symbol, diag::UnusedAssertionDecl, symbol)
                 << kind << symbol.name;
         }
     }
@@ -423,7 +423,7 @@ private:
 
     void addDiag(const Symbol& symbol, DiagCode code) {
         if (shouldWarn(symbol))
-            context.addDiag(symbol, code, symbol.location) << symbol.name;
+            context.addDiag(symbol, code, symbol) << symbol.name;
     }
 
     std::pair<bool, bool> isReferenced(const syntax::SyntaxNode& node) const {

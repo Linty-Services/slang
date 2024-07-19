@@ -113,6 +113,9 @@ public:
 
     /// Issues a new diagnostic.
     Diagnostic& addDiag(const ast::Symbol& symbol, DiagCode code, SourceRange sourceRange);
+
+    /// Issues a new diagnostic.
+    Diagnostic& addDiag(const ast::Symbol& symbol, DiagCode code, const ast::Symbol& locSymbol);
 };
 
 /// The analysis manager coordinates running various analyses on AST symbols.
