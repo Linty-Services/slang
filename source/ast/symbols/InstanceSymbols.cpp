@@ -2333,7 +2333,7 @@ public:
             return;
 
         if (symbol.procedureKind == ProceduralBlockKind::Always) {
-            body.addDiag(diag::AlwaysInChecker, symbol.location);
+            body.addDiag(diag::AlwaysInChecker, symbol);
             return;
         }
 

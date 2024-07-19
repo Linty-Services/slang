@@ -317,7 +317,7 @@ struct DiagnosticVisitor : public ASTVisitor<DiagnosticVisitor, false, false> {
         // Detect infinite recursion, which happens if we see this exact
         // instance body somewhere higher up in the stack.
         if (!activeInstanceBodies.emplace(&symbol.body).second) {
-            symbol.getParentScope()->addDiag(diag::InfinitelyRecursiveHierarchy, symbol.location)
+            symbol.getParentScope()->addDiag(diag::InfinitelyRecursiveHierarchy, symbol)
                 << symbol.name;
             hierarchyProblem = true;
             return;
@@ -329,7 +329,7 @@ struct DiagnosticVisitor : public ASTVisitor<DiagnosticVisitor, false, false> {
         auto guard = ScopeGuard([this, &symbol] { activeInstanceBodies.erase(&symbol.body); });
         if (activeInstanceBodies.size() > compilation.getOptions().maxInstanceDepth) {
             auto& diag = symbol.getParentScope()->addDiag(diag::MaxInstanceDepthExceeded,
-                                                          symbol.location);
+                                                          symbol);
             diag << symbol.getDefinition().getKindString();
             diag << compilation.getOptions().maxInstanceDepth;
             hierarchyProblem = true;
@@ -757,7 +757,7 @@ private:
 
         auto [used, _] = compilation.isReferenced(*syntax);
         if (!used && shouldWarn(symbol)) {
-            symbol.getParentScope()->addDiag(diag::UnusedAssertionDecl, symbol.location)
+            symbol.getParentScope()->addDiag(diag::UnusedAssertionDecl, symbol)
                 << kind << symbol.name;
         }
     }
@@ -777,12 +777,8 @@ private:
     }
 
     void addDiag(const Symbol& symbol, DiagCode code) {
-        if (shouldWarn(symbol)) {
-            if (auto syntax = symbol.getSyntax())
-                symbol.getParentScope()->addDiag(code, syntax->sourceRange()) << symbol.name;
-            else
-                symbol.getParentScope()->addDiag(code, symbol.location) << symbol.name;
-        }
+        if (shouldWarn(symbol))
+            symbol.getParentScope()->addDiag(code, symbol) << symbol.name;
     }
 
     Compilation& compilation;

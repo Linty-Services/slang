@@ -830,7 +830,7 @@ void Compilation::createDefinition(const Scope& scope, LookupLocation location,
 void Compilation::insertDefinition(Symbol& symbol, const Scope& scope) {
     auto reportRedefinition = [&](SourceLocation oldLoc, DiagCode code) {
         if (!symbol.name.empty()) {
-            auto& diag = scope.addDiag(code, symbol.location);
+            auto& diag = scope.addDiag(code, symbol);
             diag << symbol.name;
             diag.addNote(diag::NotePreviousDefinition, oldLoc);
         }
@@ -951,7 +951,7 @@ const PackageSymbol& Compilation::createPackage(const Scope& scope,
     auto [it, inserted] = packageMap.emplace(package.name, &package);
     if (!inserted && !package.name.empty() &&
         scope.asSymbol().kind == SymbolKind::CompilationUnit) {
-        auto& diag = scope.addDiag(diag::Redefinition, package.location);
+        auto& diag = scope.addDiag(diag::Redefinition, package);
         diag << package.name;
         diag.addNote(diag::NotePreviousDefinition, it->second->location);
     }
@@ -984,7 +984,7 @@ const ConfigBlockSymbol& Compilation::createConfigBlock(const Scope& scope,
             });
 
             if (findIt != it->second.end()) {
-                auto& diag = scope.addDiag(diag::Redefinition, config.location);
+                auto& diag = scope.addDiag(diag::Redefinition, config);
                 diag << config.name;
                 diag.addNote(diag::NotePreviousDefinition, (*findIt)->location);
             }
@@ -1226,7 +1226,7 @@ void Compilation::noteExternDefinition(const Scope& scope, const SyntaxNode& syn
     auto [it, inserted] = externDefMap.emplace(std::tuple(name, targetScope), &syntax);
     if (!inserted) {
         if (syntax.kind != it->second->kind) {
-            auto& diag = scope.addDiag(diag::Redefinition, nameToken.location());
+            auto& diag = scope.addDiag(diag::Redefinition, nameToken.range());
             diag << name;
             diag.addNote(diag::NotePreviousDefinition, getExternNameToken(*it->second).location());
         }
@@ -1402,7 +1402,7 @@ void Compilation::elaborate() {
         for (auto inst : getRoot().topInstances) {
             for (auto port : inst->body.getPortList()) {
                 if (port->kind == SymbolKind::InterfacePort) {
-                    inst->body.addDiag(diag::TopModuleIfacePort, port->location)
+                    inst->body.addDiag(diag::TopModuleIfacePort, *port)
                         << inst->name << port->name;
                     break;
                 }
@@ -1415,11 +1415,11 @@ void Compilation::elaborate() {
 
                     if (dir == ArgumentDirection::Ref) {
                         if (port->name.empty()) {
-                            inst->body.addDiag(diag::TopModuleUnnamedRefPort, port->location)
+                            inst->body.addDiag(diag::TopModuleUnnamedRefPort, *port)
                                 << inst->name;
                         }
                         else {
-                            inst->body.addDiag(diag::TopModuleRefPort, port->location)
+                            inst->body.addDiag(diag::TopModuleRefPort, *port)
                                 << inst->name << port->name;
                         }
                     }
@@ -1444,7 +1444,7 @@ void Compilation::elaborate() {
             };
 
             if (!def->name.empty() && def->name != "_"sv && !hasUnusedAttrib()) {
-                def->getParentScope()->addDiag(diag::UnusedDefinition, def->location)
+                def->getParentScope()->addDiag(diag::UnusedDefinition, *def)
                     << def->getKindString();
             }
         }
@@ -1809,7 +1809,7 @@ void Compilation::checkDPIMethods(std::span<const SubroutineSymbol* const> dpiIm
         auto [it, inserted] = nameMap.emplace(cId, sub);
         if (!inserted) {
             if (!checkSignaturesMatch(*sub, *it->second)) {
-                auto& diag = scope->addDiag(diag::DPISignatureMismatch, sub->location);
+                auto& diag = scope->addDiag(diag::DPISignatureMismatch, *sub);
                 diag << cId;
                 diag.addNote(diag::NotePreviousDefinition, it->second->location);
             }
@@ -1863,7 +1863,7 @@ void Compilation::checkDPIMethods(std::span<const SubroutineSymbol* const> dpiIm
 
         auto& retType = sub.getReturnType();
         if (!retType.isValidForDPIReturn() && !retType.isError()) {
-            auto& diag = scope->addDiag(diag::InvalidDPIReturnType, sub.location);
+            auto& diag = scope->addDiag(diag::InvalidDPIReturnType, sub);
             diag << retType;
             diag.addNote(diag::NoteDeclarationHere, syntax->name.location());
             continue;
@@ -1871,11 +1871,11 @@ void Compilation::checkDPIMethods(std::span<const SubroutineSymbol* const> dpiIm
 
         for (auto arg : sub.getArguments()) {
             if (arg->direction == ArgumentDirection::Ref)
-                scope->addDiag(diag::DPIRefArg, arg->location);
+                scope->addDiag(diag::DPIRefArg, *arg);
 
             auto& type = arg->getType();
             if (!type.isValidForDPIArg() && !type.isError()) {
-                auto& diag = scope->addDiag(diag::InvalidDPIArgType, arg->location);
+                auto& diag = scope->addDiag(diag::InvalidDPIArgType, *arg);
                 diag << type;
                 diag.addNote(diag::NoteDeclarationHere, syntax->name.location());
                 continue;
@@ -1925,7 +1925,7 @@ void Compilation::checkExternIfaceMethods(std::span<const MethodPrototypeSymbol*
 
             auto& parent = scope->asSymbol();
             if (!parent.name.empty() && !proto->name.empty()) {
-                auto& diag = scope->addDiag(diag::MissingExternImpl, proto->location);
+                auto& diag = scope->addDiag(diag::MissingExternImpl, *proto);
                 diag << (proto->subroutineKind == SubroutineKind::Function ? "function"sv
                                                                            : "task"sv);
                 diag << parent.name << proto->name;
@@ -1955,7 +1955,7 @@ void Compilation::checkModportExports(
 
                 if (!found) {
                     auto& diag = port->getParentScope()->addDiag(diag::MissingExportImpl,
-                                                                 port->location);
+                                                                 *port);
                     diag << method.name << def->name;
                     diag.addNote(diag::NoteDeclarationHere, method.location);
                 }
@@ -2281,7 +2281,7 @@ void Compilation::resolveDefParamsAndBinds() {
     auto checkProblem = [&](const DefParamVisitor& visitor) {
         if (visitor.hierarchyProblem) {
             auto& diag = root->addDiag(diag::MaxInstanceDepthExceeded,
-                                       visitor.hierarchyProblem->location);
+                                       *visitor.hierarchyProblem);
             diag << visitor.hierarchyProblem->getDefinition().getKindString();
             diag << options.maxInstanceDepth;
             return true;
