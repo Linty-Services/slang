@@ -13,6 +13,24 @@
 
 namespace slang::ast::builtins {
 
+template<class To, class From>
+std::enable_if_t<
+    sizeof(To) == sizeof(From) &&
+    std::is_trivially_copyable_v<From> &&
+    std::is_trivially_copyable_v<To>,
+    To>
+// constexpr support needs compiler magic
+bit_cast_opencoded(const From& src) noexcept
+{
+    static_assert(std::is_trivially_constructible_v<To>,
+        "This implementation additionally requires "
+        "destination type to be trivially constructible");
+ 
+    To dst;
+    std::memcpy(&dst, &src, sizeof(To));
+    return dst;
+}
+
 class SignedConversionFunction : public SystemSubroutine {
 public:
     SignedConversionFunction(const std::string& name, bool toSigned) :
@@ -103,7 +121,7 @@ public:
         if (!val)
             return nullptr;
 
-        return SVInt(64, std::bit_cast<uint64_t>(val.real()), false);
+        return SVInt(64, bit_cast_opencoded<uint64_t>(val.real()), false);
     }
 };
 
@@ -120,7 +138,7 @@ public:
             return nullptr;
 
         uint64_t i = val.integer().as<uint64_t>().value_or(0);
-        return real_t(std::bit_cast<double>(i));
+        return real_t(bit_cast_opencoded<double>(i));
     }
 };
 
@@ -136,7 +154,7 @@ public:
         if (!val)
             return nullptr;
 
-        return SVInt(32, std::bit_cast<uint32_t>(val.shortReal()), false);
+        return SVInt(32, bit_cast_opencoded<uint32_t>(val.shortReal()), false);
     }
 };
 
@@ -153,7 +171,7 @@ public:
             return nullptr;
 
         uint32_t i = val.integer().as<uint32_t>().value_or(0);
-        return shortreal_t(std::bit_cast<float>(i));
+        return shortreal_t(bit_cast_opencoded<float>(i));
     }
 };
 
