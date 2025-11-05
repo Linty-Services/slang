@@ -98,8 +98,8 @@ void DriverTracker::add(AnalysisContext& context, DriverAlloc& driverAlloc,
                         std::span<const SymbolDriverListPair> symbolDriverList) {
     SmallVector<HierPortDriver> hierPortDrivers;
     for (auto& [valueSym, drivers] : symbolDriverList) {
-        auto updateFunc = [&](auto& elem) {
-            for (auto& [driver, bounds] : drivers) {
+        auto updateFunc = [&, drivers_ref=std::ref(drivers)](auto& elem) {
+            for (auto& [driver, bounds] : drivers_ref.get()) {
                 addDriver(context, driverAlloc, *elem.first, elem.second, *driver, bounds,
                           hierPortDrivers);
             }
@@ -231,7 +231,7 @@ void DriverTracker::addDrivers(AnalysisContext& context, DriverAlloc& driverAllo
             auto driver = context.alloc.emplace<ValueDriver>(driverKind, lsp, containingSymbol,
                                                              driverFlags);
 
-            auto updateFunc = [&](auto& elem) {
+            auto updateFunc = [&, bounds=bounds](auto& elem) {
                 addDriver(context, driverAlloc, *elem.first, elem.second, *driver, *bounds,
                           hierPortDrivers);
             };
@@ -736,7 +736,7 @@ void DriverTracker::applyInstanceSideEffect(AnalysisContext& context, DriverAllo
             if (!bounds)
                 return;
 
-            auto updateFunc = [&](auto& elem) {
+            auto updateFunc = [&, driver=driver, bounds=bounds](auto& elem) {
                 SmallVector<HierPortDriver> unused;
                 addDriver(context, driverAlloc, *elem.first, elem.second, *driver, *bounds, unused);
             };
@@ -753,7 +753,7 @@ void DriverTracker::applyInstanceSideEffect(AnalysisContext& context, DriverAllo
             if (!bounds)
                 return;
 
-            auto updater = [&](auto& item) { item.second.emplace_back(driver, *bounds); };
+            auto updater = [&, driver=driver, bounds=bounds](auto& item) { item.second.emplace_back(driver, *bounds); };
             indirectDrivers.try_emplace_and_visit(&valueSym, updater, updater);
         }
     }
