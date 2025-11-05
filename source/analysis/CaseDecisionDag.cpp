@@ -27,6 +27,9 @@ CaseDecisionDag::CaseDecisionDag(std::span<const SVInt> clauses, uint32_t bitWid
         uint32_t level;
         SVInt curPath;
         std::vector<ClauseIndex> activeIndices;
+
+        StackFrame(uint32_t level, SVInt path, std::vector<ClauseIndex> indices)
+            : level(level), curPath(std::move(path)), activeIndices(std::move(indices)) {}
     };
 
     std::vector<StackFrame> stack;
