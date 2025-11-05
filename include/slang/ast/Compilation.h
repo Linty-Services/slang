@@ -1003,6 +1003,9 @@ private:
         AliasBitRange range;
         const Expression* firstExpr;
         const Expression* secondExpr;
+
+        NetAlias(const Symbol* sym, AliasBitRange range, const Expression* firstExpr, const Expression* secondExpr)
+            : sym(sym), range(range), firstExpr(firstExpr), secondExpr(secondExpr) {}
     };
 
     using AliasIntervalMap = IntervalMap<uint64_t, const NetAlias*>;
